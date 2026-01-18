@@ -1,12 +1,58 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { NativeModule, requireNativeModule } from "expo";
 
-import { RnBluetoothClassicPrinterModuleEvents } from './RnBluetoothClassicPrinter.types';
+import { RnBluetoothClassicPrinterModuleEvents } from "./RnBluetoothClassicPrinter.types";
 
+/**
+ * React Native module for Bluetooth Classic ESC/POS thermal printers
+ */
 declare class RnBluetoothClassicPrinterModule extends NativeModule<RnBluetoothClassicPrinterModuleEvents> {
-  PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
+  /**
+   * Check if Bluetooth is enabled
+   * @returns true if Bluetooth is enabled
+   */
+  isBluetoothEnabled: () => boolean;
+
+  /**
+   * Request to enable Bluetooth (shows system dialog)
+   * @returns Promise that resolves to true if request was sent
+   */
+  requestEnableBluetooth: () => Promise<boolean>;
+
+  /**
+   * Start scanning for Bluetooth devices
+   * Emits "onDeviceFound" events as devices are discovered
+   * @returns Promise that resolves to true if scanning started
+   */
+  startScanning: () => Promise<boolean>;
+
+  /**
+   * Stop scanning for Bluetooth devices
+   * @returns true if stopped successfully
+   */
+  stopScanning: () => boolean;
+
+  /**
+   * Connect to a Bluetooth device by MAC address
+   * @param deviceId - MAC address of the device
+   * @returns Promise that resolves to true if connected
+   */
+  connectDevice: (deviceId: string) => Promise<boolean>;
+
+  /**
+   * Disconnect from the current device
+   * @returns Promise that resolves to true if disconnected
+   */
+  disconnect: () => Promise<boolean>;
+
+  /**
+   * Print raw ESC/POS commands (base64 encoded)
+   * Use with EscPos.ts commands
+   * @param base64Data - Base64 encoded ESC/POS commands
+   * @returns Promise that resolves to true if sent successfully
+   */
+  printRaw: (base64Data: string) => Promise<boolean>;
 }
 
-// This call loads the native module object from the JSI.
-export default requireNativeModule<RnBluetoothClassicPrinterModule>('RnBluetoothClassicPrinter');
+export default requireNativeModule<RnBluetoothClassicPrinterModule>(
+  "RnBluetoothClassicPrinter",
+);

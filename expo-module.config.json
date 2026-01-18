@@ -1,9 +1,11 @@
 {
-  "platforms": ["apple", "android", "web"],
+  "platforms": ["android"],
   "apple": {
     "modules": ["RnBluetoothClassicPrinterModule"]
   },
   "android": {
-    "modules": ["expo.modules.rnbluetoothclassicprinter.RnBluetoothClassicPrinterModule"]
+    "modules": [
+      "expo.modules.rnbluetoothclassicprinter.RnBluetoothClassicPrinterModule"
+    ]
   }
 }
