@@ -1,6 +1,6 @@
 {
   "name": "rn-bluetooth-classic-printer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A React Native/Expo module for printing to Bluetooth Classic thermal printers using ESC/POS commands",
   "main": "build/index.js",
   "types": "build/index.d.ts",
