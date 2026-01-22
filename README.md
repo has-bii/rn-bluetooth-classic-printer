@@ -1,15 +1,19 @@
 # rn-bluetooth-classic-printer
 
-A React Native/Expo module for printing to Bluetooth Classic thermal printers using ESC/POS commands.
+A React Native module for printing to Bluetooth Classic thermal printers (58mm) using ESC/POS commands.
+
+> **Note:** This library only works on Android. iOS is not supported because it doesn't allow direct connections to Bluetooth Classic devices from apps.
 
 ## Features
 
 - Scan and connect to Bluetooth Classic devices
-- Print to thermal printers (58mm, 80mm)
+- Get paired and connected devices
+- Print to 58mm thermal printers
 - Built-in ESC/POS command library
-- Text formatting (align, size, bold, underline)
+- Text formatting (align, size, bold, underline, reverse)
 - QR code printing
-- Receipt helpers (line items, horizontal lines)
+- Receipt helpers (line items, horizontal lines, justified text)
+- React hook for easy state management
 - TypeScript support
 - Works with Expo and bare React Native projects
 
@@ -19,21 +23,11 @@ A React Native/Expo module for printing to Bluetooth Classic thermal printers us
 npm install rn-bluetooth-classic-printer
 ```
 
-For Expo managed projects, add the plugin to your `app.json` or `app.config.js`:
-
-```json
-{
-  "expo": {
-    "plugins": ["rn-bluetooth-classic-printer"]
-  }
-}
-```
-
 For bare React Native projects, follow the [Expo modules setup guide](https://docs.expo.dev/modules/).
 
 ## Permissions
 
-### Android
+### Android (Bare React Native)
 
 Add to `android/app/src/main/AndroidManifest.xml`:
 
@@ -41,19 +35,27 @@ Add to `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.BLUETOOTH" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
 ```
 
-### iOS
+### Expo (app.json / app.config.js)
 
-Add to `ios/YourApp/Info.plist`:
+Add the permissions to your Expo config within the `android` property:
 
-```xml
-<key>NSBluetoothAlwaysUsageDescription</key>
-<string>This app uses Bluetooth to connect to thermal printers.</string>
-<key>NSBluetoothPeripheralUsageDescription</key>
-<string>This app uses Bluetooth to connect to thermal printers.</string>
+```json
+{
+  "expo": {
+    "android": {
+      "permissions": [
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN"
+      ]
+    }
+  }
+}
 ```
 
 ## Usage
@@ -158,6 +160,78 @@ const qrCode = EscPos.combineCommands(
 );
 ```
 
+### Print Justified Text
+
+```typescript
+import { EscPos } from 'rn-bluetooth-classic-printer';
+
+const justified = EscPos.combineCommands(
+  EscPos.INIT,
+  EscPos.printJustify('Coffee', '$3.50'),                              // "Coffee                   $3.50"
+  EscPos.printJustify('Coffee', '$3.50', 2),                           // "Coffee                 $3.50"
+  EscPos.printJustify('Very Long Item Name', '$9.99'),                 // "Very Long Item...       $9.99"
+  EscPos.newLine()
+);
+```
+
+### Using the React Hook
+
+The `useBluetoothPrinter` hook provides state management and functions for Bluetooth printer operations:
+
+```typescript
+import { useBluetoothPrinter, EscPos } from 'rn-bluetooth-classic-printer';
+
+function PrinterComponent() {
+  const {
+    isEnabled,
+    pairedDevices,
+    discoveredDevices,
+    connectedDevice,
+    isScanning,
+    isLoading,
+    message,
+    checkBluetoothStatus,
+    requestEnableBluetooth,
+    startScanning,
+    stopScanning,
+    loadPairedDevices,
+    connectDevice,
+    disconnect,
+    printRaw,
+  } = useBluetoothPrinter();
+
+  // Connect to a paired device
+  const handleConnect = async (device) => {
+    await connectDevice(device);
+  };
+
+  // Print a receipt
+  const handlePrint = async () => {
+    const receipt = EscPos.combineCommands(
+      EscPos.INIT,
+      EscPos.textCenter('MY STORE\n'),
+      EscPos.newLine(),
+      EscPos.printJustify('Item 1', '$10.00'),
+      EscPos.printJustify('Item 2', '$15.00'),
+      EscPos.horizontalLine('normal'),
+      EscPos.text('TOTAL:           $25.00\n'),
+      EscPos.newLine(3),
+      EscPos.cut()
+    );
+    await printRaw(receipt);
+  };
+
+  return (
+    <View>
+      <Text>{message}</Text>
+      <Button title="Load Paired Devices" onPress={loadPairedDevices} />
+      <Button title="Start Scanning" onPress={startScanning} />
+      <Button title="Stop Scanning" onPress={stopScanning} />
+    </View>
+  );
+}
+```
+
 ## API Reference
 
 ### Bluetooth Status
@@ -173,6 +247,7 @@ const qrCode = EscPos.combineCommands(
 |--------|-------------|
 | `startScanning(listener)` | Start scanning for devices. Returns EventSubscription |
 | `stopScanning()` | Stop scanning for devices |
+| `getPairedDevices()` | Get paired/bonded Bluetooth devices (Promise) |
 
 ### Connection
 
@@ -180,6 +255,7 @@ const qrCode = EscPos.combineCommands(
 |--------|-------------|
 | `connectDevice(deviceId)` | Connect to a device by MAC address |
 | `disconnect()` | Disconnect from current device |
+| `getConnectedDevice()` | Get the currently connected device |
 
 ### Printing
 
@@ -203,7 +279,8 @@ const qrCode = EscPos.combineCommands(
 | `setAlign(align)` | Set text alignment (LEFT, CENTER, RIGHT) |
 | `setTextSize(size)` | Set text size (NORMAL, DOUBLE_HEIGHT, DOUBLE_WIDTH, DOUBLE_BOTH) |
 | `BOLD_ON / BOLD_OFF` | Toggle bold text |
-| `UNDERLINE_ON / UNDERLINE_OFF` | Toggle underline |
+| `UNDERLINE_ON / UNDERLINE_OFF / UNDERLINE_DOUBLE` | Toggle underline |
+| `REVERSE_ON / REVERSE_OFF` | Toggle reverse mode |
 | `cut(type)` | Cut paper (FULL, PARTIAL) |
 | `text(data)` | Create text command |
 | `textLeft(str)` | Print left-aligned text |
@@ -211,6 +288,7 @@ const qrCode = EscPos.combineCommands(
 | `textRight(str)` | Print right-aligned text |
 | `newLine(count)` | Print new lines |
 | `horizontalLine(style)` | Print horizontal line |
+| `printJustify(left, right, gap?, width?)` | Print justified text (left + right aligned) |
 | `printLineItem(name, qty, price, total)` | Print formatted line item |
 | `printQRCode(data, size)` | Print QR code |
 | `combineCommands(...commands)` | Combine multiple commands |
