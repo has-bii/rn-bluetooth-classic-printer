@@ -61,6 +61,14 @@ export function stopScanning(): boolean {
   return RnBluetoothClassicModule.stopScanning();
 }
 
+/**
+ * Get paired/bonded Bluetooth devices
+ * @returns Promise that resolves to array of paired BluetoothDevice
+ */
+export function getPairedDevices(): Promise<BluetoothDevice[]> {
+  return RnBluetoothClassicModule.getPairedDevices();
+}
+
 // ============================================================================
 // CONNECTION
 // ============================================================================
@@ -82,6 +90,14 @@ export function disconnect(): Promise<boolean> {
   return RnBluetoothClassicModule.disconnect();
 }
 
+/**
+ * Get the currently connected device
+ * @returns Connected device or null if not connected
+ */
+export function getConnectedDevice(): BluetoothDevice | null {
+  return RnBluetoothClassicModule.getConnectedDevice();
+}
+
 // ============================================================================
 // PRINTING
 // ============================================================================
@@ -101,3 +117,9 @@ export function printRaw(base64Data: string): Promise<boolean> {
 // ============================================================================
 
 export { EscPos };
+
+// ============================================================================
+// REACT HOOK
+// ============================================================================
+
+export { useBluetoothPrinter } from "./useBluetoothPrinter";

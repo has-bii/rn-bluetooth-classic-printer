@@ -1,8 +1,9 @@
 import * as React from "react";
-import * as RnBluetoothClassicPrinter from "rn-bluetooth-classic-printer";
+import {
+  useBluetoothPrinter,
+  EscPos,
+} from "rn-bluetooth-classic-printer";
 import type { BluetoothDevice } from "rn-bluetooth-classic-printer";
-import { EscPos } from "rn-bluetooth-classic-printer";
-import { Platform, PermissionsAndroid } from "react-native";
 import {
   StyleSheet,
   Text,
@@ -19,151 +20,24 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  const [isEnabled, setIsEnabled] = React.useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [message, setMessage] = React.useState<string>("");
-
-  // Device states
-  const [discoveredDevices, setDiscoveredDevices] = React.useState<
-    BluetoothDevice[]
-  >([]);
-  const [isScanning, setIsScanning] = React.useState(false);
-  const [connectedDevice, setConnectedDevice] =
-    React.useState<BluetoothDevice | null>(null);
-  const [scanningSubscription, setScanningSubscription] =
-    React.useState<ReturnType<
-      typeof RnBluetoothClassicPrinter.startScanning
-    > | null>(null);
-
-  const requestPermissions = async () => {
-    if (Platform.OS !== "android") {
-      return true;
-    }
-
-    try {
-      const requests = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      ]);
-
-      const granted =
-        requests["android.permission.BLUETOOTH_SCAN"] ===
-          PermissionsAndroid.RESULTS.GRANTED &&
-        requests["android.permission.BLUETOOTH_CONNECT"] ===
-          PermissionsAndroid.RESULTS.GRANTED;
-
-      return granted;
-    } catch (error) {
-      console.warn("Permission request error:", error);
-      return false;
-    }
-  };
-
-  const checkBluetoothStatus = async () => {
-    setIsLoading(true);
-    setMessage("");
-    try {
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
-        setMessage("Bluetooth permissions not granted");
-        setIsLoading(false);
-        return;
-      }
-
-      const enabled = RnBluetoothClassicPrinter.isBluetoothEnabled();
-      setIsEnabled(enabled);
-      setMessage(enabled ? "Bluetooth is enabled" : "Bluetooth is disabled");
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const requestEnableBluetooth = async () => {
-    setIsLoading(true);
-    setMessage("");
-    try {
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
-        setMessage("Bluetooth permissions not granted");
-        setIsLoading(false);
-        return;
-      }
-
-      const result = await RnBluetoothClassicPrinter.requestEnableBluetooth();
-      setIsEnabled(result);
-      setMessage(
-        result
-          ? "Bluetooth enabled successfully"
-          : "Bluetooth enable request denied",
-      );
-    } catch (error: any) {
-      setMessage(`Error: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const startDiscovery = () => {
-    setDiscoveredDevices([]);
-    setMessage("Starting device scan...");
-    console.log("Starting device scan...");
-    setIsScanning(true);
-
-    const subscription = RnBluetoothClassicPrinter.startScanning((device) => {
-      console.log("Device found:", device.name, device.id);
-      setDiscoveredDevices((prev) => {
-        // Avoid duplicates
-        if (prev.some((d) => d.id === device.id)) {
-          return prev;
-        }
-        return [...prev, device];
-      });
-    });
-
-    setScanningSubscription(subscription);
-  };
-
-  const stopDiscovery = () => {
-    if (scanningSubscription) {
-      scanningSubscription.remove();
-      setScanningSubscription(null);
-    }
-    RnBluetoothClassicPrinter.stopScanning();
-    setIsScanning(false);
-    setMessage("Scan stopped");
-  };
-
-  const connectDevice = async (device: BluetoothDevice) => {
-    setIsLoading(true);
-    setMessage(`Connecting to ${device.name}...`);
-    try {
-      const result = await RnBluetoothClassicPrinter.connectDevice(device.id);
-      if (result) {
-        setConnectedDevice(device);
-        setMessage(`Connected to ${device.name}`);
-      }
-    } catch (error: any) {
-      setMessage(`Connection failed: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const disconnectDevice = async () => {
-    setIsLoading(true);
-    setMessage("Disconnecting...");
-    try {
-      await RnBluetoothClassicPrinter.disconnect();
-      setConnectedDevice(null);
-      setMessage("Disconnected");
-    } catch (error: any) {
-      setMessage(`Disconnect failed: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    isEnabled,
+    isLoading,
+    message,
+    pairedDevices,
+    discoveredDevices,
+    isScanning,
+    connectedDevice,
+    checkBluetoothStatus,
+    requestEnableBluetooth,
+    startScanning,
+    stopScanning,
+    loadPairedDevices,
+    connectDevice,
+    disconnect,
+    printRaw,
+    setMessage,
+  } = useBluetoothPrinter();
 
   // 1. Text Formatting Demo - All text styles, alignments, sizes
   const printTextFormattingDemo = async () => {
@@ -240,7 +114,7 @@ export default function App() {
 
         EscPos.cut(EscPos.CutType.PARTIAL),
       );
-      await RnBluetoothClassicPrinter.printRaw(commands);
+      await printRaw(commands);
       setMessage("Text formatting demo printed!");
     } catch (error: any) {
       setMessage(`Print failed: ${error.message}`);
@@ -301,7 +175,7 @@ export default function App() {
         EscPos.newLine(2),
         EscPos.cut(EscPos.CutType.PARTIAL),
       );
-      await RnBluetoothClassicPrinter.printRaw(commands);
+      await printRaw(commands);
       setMessage("Receipt demo printed!");
     } catch (error: any) {
       setMessage(`Print failed: ${error.message}`);
@@ -355,7 +229,7 @@ export default function App() {
 
         EscPos.cut(EscPos.CutType.PARTIAL),
       );
-      await RnBluetoothClassicPrinter.printRaw(commands);
+      await printRaw(commands);
       setMessage("Paper operations demo printed!");
     } catch (error: any) {
       setMessage(`Print failed: ${error.message}`);
@@ -448,7 +322,7 @@ export default function App() {
         // Cut
         EscPos.cut(EscPos.CutType.PARTIAL),
       );
-      await RnBluetoothClassicPrinter.printRaw(commands);
+      await printRaw(commands);
       setMessage("Complete demo printed!");
     } catch (error: any) {
       setMessage(`Print failed: ${error.message}`);
@@ -483,7 +357,7 @@ export default function App() {
         EscPos.printQRCode("https://example.com", 16),
         EscPos.LF,
       );
-      await RnBluetoothClassicPrinter.printRaw(commands);
+      await printRaw(commands);
       setMessage("Complete demo printed!");
     } catch (error: any) {
       setMessage(`Print failed: ${error.message}`);
@@ -491,18 +365,6 @@ export default function App() {
       setIsLoading(false);
     }
   };
-
-  React.useEffect(() => {
-    requestPermissions().then(() => {
-      checkBluetoothStatus();
-    });
-
-    return () => {
-      if (scanningSubscription) {
-        scanningSubscription.remove();
-      }
-    };
-  }, []);
 
   const renderDevice = (device: BluetoothDevice) => (
     <TouchableOpacity
@@ -610,7 +472,7 @@ export default function App() {
                   styles.halfButton,
                   isScanning ? styles.dangerButton : styles.primaryButton,
                 ]}
-                onPress={isScanning ? stopDiscovery : startDiscovery}
+                onPress={isScanning ? stopScanning : startScanning}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -630,7 +492,7 @@ export default function App() {
                     ? styles.dangerButton
                     : styles.secondaryButton,
                 ]}
-                onPress={connectedDevice ? disconnectDevice : () => {}}
+                onPress={connectedDevice ? disconnect : () => {}}
                 disabled={!connectedDevice || isLoading}
               >
                 <Text
@@ -644,6 +506,27 @@ export default function App() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Paired Devices Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>
+                Paired Devices ({pairedDevices.length})
+              </Text>
+              <TouchableOpacity
+                style={[styles.iconButton, styles.secondaryButton]}
+                onPress={loadPairedDevices}
+                disabled={isLoading}
+              >
+                <Text style={styles.secondaryButtonText}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+            {pairedDevices.length > 0 ? (
+              pairedDevices.map((device) => renderDevice(device))
+            ) : (
+              <Text style={styles.emptyText}>No paired devices found</Text>
+            )}
           </View>
 
           {/* Discovered Devices Card */}
@@ -801,6 +684,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#212121",
     marginBottom: 12,
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  iconButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    minHeight: 32,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#757575",
+    fontStyle: "italic",
   },
   statusContainer: {
     flexDirection: "row",

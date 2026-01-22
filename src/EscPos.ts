@@ -170,6 +170,49 @@ export function horizontalLine(
 }
 
 /**
+ * Print two parts justified left and right with configurable gap
+ * Truncates left part with "..." if it exceeds available space
+ *
+ * @param leftPart - Text on the left side
+ * @param rightPart - Text on the right side
+ * @param gap - Minimum gap between parts (default: 4)
+ * @param totalWidth - Total line width in characters (default: 32 for 58mm)
+ * @returns Formatted base64 command
+ *
+ * @example
+ * ```ts
+ * printJustify("Coffee", "$3.50")                    // "Coffee                   $3.50"
+ * printJustify("Coffee", "$3.50", 2)                  // "Coffee                 $3.50"
+ * printJustify("Very Long Item Name", "$9.99")        // "Very Long Item...       $9.99"
+ * printJustify("Chocolate Chip Cookie", "$5.99", 2)   // "Chocolate Chip...       $5.99"
+ * ```
+ */
+export function printJustify(
+  leftPart: string,
+  rightPart: string,
+  gap: number = 4,
+  totalWidth: number = PAPER_58MM.charPerLine,
+): string {
+  const ellipsis = "...";
+  const ellipsisLength = ellipsis.length;
+
+  // Calculate max available length for left part
+  const maxLeftLength = totalWidth - rightPart.length - gap - ellipsisLength;
+
+  // Truncate left part if it's too long
+  let displayLeft = leftPart;
+  if (leftPart.length > maxLeftLength) {
+    displayLeft = leftPart.slice(0, Math.max(0, maxLeftLength)) + ellipsis;
+  }
+
+  // Calculate padding based on actual displayed left length
+  const paddingLength = totalWidth - displayLeft.length - rightPart.length;
+  const padding = " ".repeat(Math.max(1, paddingLength));
+
+  return text(`${displayLeft}${padding}${rightPart}\n`);
+}
+
+/**
  * Print a line item
  * Format:
  * Product Name
@@ -181,8 +224,8 @@ export function printLineItem(
   price: number,
   total: number,
 ): string {
-  const leftPart = `${quantity} x ${price.toFixed(2)}`;
-  const rightPart = `${total.toFixed(2)}`;
+  const leftPart = `${quantity} x ${price.toFixed(0)}`;
+  const rightPart = `${total.toFixed(0)}`;
   const totalWidth = 32;
 
   const spaces = Math.max(

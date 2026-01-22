@@ -138,6 +138,31 @@ class RnBluetoothClassicPrinterModule : Module() {
       true
     }
 
+    /**
+     * Get paired/bonded Bluetooth devices
+     */
+    AsyncFunction("getPairedDevices") { promise: Promise ->
+      val adapter = getBluetoothAdapter()
+
+      when {
+        adapter == null || !adapter.isEnabled -> {
+          promise.resolve(emptyList<Any>())
+          return@AsyncFunction
+        }
+      }
+
+      val pairedDevices = adapter.bondedDevices
+      val deviceList = pairedDevices.map { device ->
+        bundleOf(
+          "id" to device.address,
+          "name" to (device.name ?: "Unknown")
+        )
+      }
+
+      Log.d(TAG, "Found ${deviceList.size} paired devices")
+      promise.resolve(deviceList)
+    }
+
     // ============================================================================
     // CONNECTION
     // ============================================================================
@@ -189,6 +214,20 @@ class RnBluetoothClassicPrinterModule : Module() {
       } catch (e: IOException) {
         Log.e(TAG, "Disconnect failed", e)
         promise.reject("DISCONNECT_FAILED", "Failed to disconnect: ${e.message}", null)
+      }
+    }
+
+    /**
+     * Get the currently connected device
+     */
+    Function("getConnectedDevice") {
+      val socket = bluetoothSocket
+      when {
+        socket == null || !socket.isConnected -> null
+        else -> bundleOf(
+          "id" to socket.remoteDevice.address,
+          "name" to (socket.remoteDevice.name ?: "Unknown")
+        )
       }
     }
 

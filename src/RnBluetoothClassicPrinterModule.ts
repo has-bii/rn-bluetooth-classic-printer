@@ -1,6 +1,6 @@
 import { NativeModule, requireNativeModule } from "expo";
 
-import { RnBluetoothClassicPrinterModuleEvents } from "./RnBluetoothClassicPrinter.types";
+import { BluetoothDevice, RnBluetoothClassicPrinterModuleEvents } from "./RnBluetoothClassicPrinter.types";
 
 /**
  * React Native module for Bluetooth Classic ESC/POS thermal printers
@@ -32,6 +32,12 @@ declare class RnBluetoothClassicPrinterModule extends NativeModule<RnBluetoothCl
   stopScanning: () => boolean;
 
   /**
+   * Get paired/bonded Bluetooth devices
+   * @returns Promise that resolves to array of paired devices
+   */
+  getPairedDevices: () => Promise<BluetoothDevice[]>;
+
+  /**
    * Connect to a Bluetooth device by MAC address
    * @param deviceId - MAC address of the device
    * @returns Promise that resolves to true if connected
@@ -43,6 +49,12 @@ declare class RnBluetoothClassicPrinterModule extends NativeModule<RnBluetoothCl
    * @returns Promise that resolves to true if disconnected
    */
   disconnect: () => Promise<boolean>;
+
+  /**
+   * Get the currently connected device
+   * @returns Connected device or null if not connected
+   */
+  getConnectedDevice: () => BluetoothDevice | null;
 
   /**
    * Print raw ESC/POS commands (base64 encoded)
